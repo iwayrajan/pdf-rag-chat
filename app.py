@@ -118,7 +118,7 @@ if st.session_state.rag is not None:
                         # Groq free models have limited context; trim defensively.
                         context = context[:24000]
                     else:
-                        retrieved_chunks = st.session_state.rag.retrieve(question, k=top_k)
+                        retrieved_chunks = st.session_state.rag.retrieve_hybrid(question, k=top_k)
                         context = "\n\n---\n\n".join(retrieved_chunks)
 
                     prompt = f"""Answer the question using ONLY the context below. \

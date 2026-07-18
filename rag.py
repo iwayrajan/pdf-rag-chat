@@ -71,6 +71,43 @@ class PDFRag:
         distances, indices = self.index.search(query_vec, k)
         return [self.chunks[i] for i in indices[0] if i != -1]
 
+    def retrieve_hybrid(self, query: str, k: int = 4) -> list[str]:
+        """
+        Vector search alone struggles with exact identifiers (task numbers, section
+        codes, IDs) because embeddings capture meaning, not literal digit sequences -
+        "TASK 3.1.2" and "TASK 3.2.2" look almost identical to the embedding model.
+
+        This checks for identifier-like tokens in the query (e.g. "3.2.2", "Section 4.1")
+        and does a literal case-insensitive search for them first, then fills any
+        remaining slots with vector search results.
+        """
+        if self.index is None or not self.chunks:
+            return []
+
+        # Match patterns like "3.2.2", "3.2", "TASK-3.2.2", etc.
+        identifier_pattern = r"\b\d+(?:\.\d+){1,3}\b"
+        identifiers = re.findall(identifier_pattern, query)
+
+        exact_matches = []
+        if identifiers:
+            for chunk in self.chunks:
+                if any(ident in chunk for ident in identifiers):
+                    exact_matches.append(chunk)
+
+        vector_matches = self.retrieve(query, k=k)
+
+        # Merge: exact matches first, then vector matches, deduplicated, capped at k
+        seen = set()
+        combined = []
+        for chunk in exact_matches + vector_matches:
+            if chunk not in seen:
+                combined.append(chunk)
+                seen.add(chunk)
+            if len(combined) >= max(k, len(exact_matches)):
+                break
+
+        return combined
+
     # ---------- End to end setup ----------
     def process_pdf(self, pdf_path: str, max_words: int = 250, overlap_words: int = 40):
         md_text = self.pdf_to_markdown(pdf_path)
