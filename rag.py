@@ -17,6 +17,7 @@ class PDFRag:
         self.index = None
         self.chunks = []
         self.chunk_sources = []  # page/section info per chunk, for citations
+        self.full_text = ""  # kept for whole-document questions (summaries, etc.)
 
     # ---------- Step 1: PDF -> Markdown ----------
     def pdf_to_markdown(self, pdf_path: str) -> str:
@@ -73,6 +74,21 @@ class PDFRag:
     # ---------- End to end setup ----------
     def process_pdf(self, pdf_path: str, max_words: int = 250, overlap_words: int = 40):
         md_text = self.pdf_to_markdown(pdf_path)
+        self.full_text = md_text
         chunks = self.chunk_markdown(md_text, max_words=max_words, overlap_words=overlap_words)
         self.build_index(chunks)
         return len(chunks)
+
+    @staticmethod
+    def is_broad_question(query: str) -> bool:
+        """
+        Detects whole-document questions (summaries, overviews) that vector
+        retrieval handles poorly, since there's no specific passage to match against.
+        """
+        broad_signals = [
+            "summar", "what is this document about", "what is this pdf about",
+            "overview of", "what does this document cover", "main points",
+            "key takeaways", "tl;dr", "gist of", "what's in this",
+        ]
+        q = query.lower()
+        return any(signal in q for signal in broad_signals)

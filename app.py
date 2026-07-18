@@ -100,9 +100,26 @@ if st.session_state.rag is not None:
                 st.markdown(question)
 
             with st.chat_message("assistant"):
-                with st.spinner("Retrieving relevant chunks and generating an answer..."):
-                    retrieved_chunks = st.session_state.rag.retrieve(question, k=top_k)
-                    context = "\n\n---\n\n".join(retrieved_chunks)
+                is_broad = st.session_state.rag.is_broad_question(question)
+
+                spinner_msg = (
+                    "This looks like a whole-document question, using the full text instead of search..."
+                    if is_broad
+                    else "Retrieving relevant chunks and generating an answer..."
+                )
+
+                with st.spinner(spinner_msg):
+                    if is_broad:
+                        # Summaries/overviews need the whole document, not similarity-matched
+                        # fragments — vector search has nothing relevant to match a broad
+                        # question against, so it returns near-random chunks.
+                        retrieved_chunks = []
+                        context = st.session_state.rag.full_text
+                        # Groq free models have limited context; trim defensively.
+                        context = context[:24000]
+                    else:
+                        retrieved_chunks = st.session_state.rag.retrieve(question, k=top_k)
+                        context = "\n\n---\n\n".join(retrieved_chunks)
 
                     prompt = f"""Answer the question using ONLY the context below. \
 If the answer isn't in the context, say you don't have enough information from the document.
@@ -127,9 +144,14 @@ Answer:"""
 
                     st.markdown(answer)
 
-                    with st.expander("Show retrieved chunks (what the model actually saw)"):
-                        for i, chunk in enumerate(retrieved_chunks, 1):
-                            st.markdown(f"**Chunk {i}:**\n\n{chunk}")
+                    if is_broad:
+                        with st.expander("Show what the model actually saw"):
+                            st.caption("Whole-document mode: full extracted text was sent, not retrieved chunks.")
+                            st.markdown(context)
+                    else:
+                        with st.expander("Show retrieved chunks (what the model actually saw)"):
+                            for i, chunk in enumerate(retrieved_chunks, 1):
+                                st.markdown(f"**Chunk {i}:**\n\n{chunk}")
 
             st.session_state.chat_history.append({"role": "assistant", "content": answer})
 else:
