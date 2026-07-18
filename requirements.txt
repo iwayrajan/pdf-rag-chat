@@ -1,0 +1,5 @@
+streamlit
+pymupdf4llm
+sentence-transformers
+faiss-cpu
+groq
