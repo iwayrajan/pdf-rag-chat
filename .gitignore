@@ -7,3 +7,7 @@ report_template/*.pdf
 report_template/page-*.jpg
 presentation/*.pdf
 presentation/slide-*.jpg
+deliverables/
+tracker/*.pdf
+tracker/sheet-*.jpg
+__pycache__/

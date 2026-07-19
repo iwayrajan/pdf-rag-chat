@@ -7,21 +7,27 @@ and their own screenshots.
 
 ## To generate a report for a new student
 
-1. Open `generate_report.js` and edit the `CONFIG` block near the top:
-   ```js
-   const CONFIG = {
-     PROJECT_TITLE: "...",       // usually leave as-is
-     PROJECT_TYPE: "Mini Project",  // or "Major Project"
-     STUDENT_NAME: "...",
-     ROLL_NUMBER: "...",
-     COLLEGE_NAME: "...",
-     DEPARTMENT: "...",
-     UNIVERSITY_NAME: "...",
-     GUIDE_NAME: "...",
-     HOD_NAME: "...",
-     ACADEMIC_YEAR: "...",
-     SUBMISSION_MONTH_YEAR: "...",
-   };
+**Recommended: use the master script instead of running this alone** — see
+`../scripts/generate_all.sh`, which regenerates both the report and the
+presentation together and packages them into `../deliverables/`.
+
+To run just this one manually:
+
+1. Edit `../student_config.json` (shared by both the report and the presentation):
+   ```json
+   {
+     "PROJECT_TITLE": "...",
+     "PROJECT_TYPE": "Mini Project",
+     "STUDENT_NAME": "...",
+     "ROLL_NUMBER": "...",
+     "COLLEGE_NAME": "...",
+     "DEPARTMENT": "...",
+     "UNIVERSITY_NAME": "...",
+     "GUIDE_NAME": "...",
+     "HOD_NAME": "...",
+     "ACADEMIC_YEAR": "...",
+     "SUBMISSION_MONTH_YEAR": "..."
+   }
    ```
 2. Run:
    ```bash

@@ -57,3 +57,23 @@ This opens a browser tab at `http://localhost:8501`. From there:
 - `app.py` — Streamlit UI (upload, chat, settings)
 - `rag.py` — the actual RAG pipeline logic (reusable outside the UI too)
 - `requirements.txt` — dependencies
+
+## Using this as a college mini/major project
+
+This repo also includes everything needed to package and sell this as a college
+project submission:
+
+- `student_config.json` — one shared config (name, college, guide, etc.) used by
+  both generators below
+- `scripts/generate_all.sh` — regenerates the report + presentation and packages
+  them into `deliverables/<student_name>/` in one command
+- `report_template/` — the 8-chapter Word report generator
+- `presentation/` — the 13-slide PowerPoint deck generator
+- `docs/` — architecture and query-routing diagrams (SVG + PNG)
+- `viva_prep/viva_question_bank.md` — anticipated viva questions with answers,
+  a cheat sheet, and a rehearsed pitch script
+- `tracker/Student_Order_Tracker.xlsx` — personal order/revenue tracker and a
+  reusable per-order delivery checklist
+
+**Quickest path for a new order:** edit `student_config.json`, then run
+`bash scripts/generate_all.sh` from the repo root.

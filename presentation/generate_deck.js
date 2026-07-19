@@ -1,6 +1,9 @@
 const pptxgen = require("pptxgenjs");
 const path = require("path");
 
+// Shared config — edit ../student_config.json to customize per student
+const CONFIG = require("../student_config.json");
+
 const ASSET = (f) => path.join(__dirname, f);
 
 // ============================================================
@@ -59,13 +62,13 @@ function pageNum(slide, n) {
     x: 0.9, y: 3.55, w: SW - 1.8, h: 0.6,
     fontFace: FONT_BODY, fontSize: 20, color: "CADCFC", margin: 0,
   });
-  s.addText("[Mini / Major Project]", {
+  s.addText(`[${CONFIG.PROJECT_TYPE}]`, {
     x: 0.9, y: 4.25, w: 6, h: 0.4,
     fontFace: FONT_BODY, fontSize: 14, italic: true, color: "8FA8C2", margin: 0,
   });
   s.addText([
-    { text: "[Student Name]", options: { bold: true, breakLine: true } },
-    { text: "[College Name]  |  [Academic Year]", options: {} },
+    { text: CONFIG.STUDENT_NAME, options: { bold: true, breakLine: true } },
+    { text: `${CONFIG.COLLEGE_NAME}  |  ${CONFIG.ACADEMIC_YEAR}`, options: {} },
   ], {
     x: 0.9, y: 6.5, w: 8, h: 0.7,
     fontFace: FONT_BODY, fontSize: 14, color: WHITE, margin: 0,

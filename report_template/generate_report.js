@@ -2,12 +2,14 @@
  * Reusable college project report generator for the PDF RAG Chat project.
  *
  * HOW TO REUSE FOR EACH STUDENT:
- *   1. Edit the CONFIG object below with the student's details.
- *   2. Run: node generate_report.js
+ *   1. Edit ../student_config.json with the student's details.
+ *   2. Run: node generate_report.js  (or use scripts/generate_all.sh from repo root
+ *      to regenerate both the report and the presentation together).
  *   3. Output: PDF_RAG_Chat_Report.docx in this folder.
  *
  * That's it — everything else (chapters, diagrams, test cases) stays the same
- * across students. Only swap CONFIG, and optionally the screenshots in Chapter 7.
+ * across students. Only swap student_config.json, and optionally the
+ * screenshots in Chapter 7.
  */
 
 const {
@@ -19,21 +21,10 @@ const {
 const fs = require("fs");
 
 // ============================================================
-// CONFIG — edit this block per student, then re-run the script
+// CONFIG — loaded from the shared student_config.json at the repo root.
+// Edit that one file (not this one) to generate a report for a new student.
 // ============================================================
-const CONFIG = {
-  PROJECT_TITLE: "Chat With Your PDF: A Retrieval-Augmented Generation System",
-  PROJECT_TYPE: "Mini Project",              // "Mini Project" or "Major Project"
-  STUDENT_NAME: "[Student Name]",
-  ROLL_NUMBER: "[Roll Number]",
-  COLLEGE_NAME: "[College Name]",
-  DEPARTMENT: "[Department, e.g. Computer Science and Engineering]",
-  UNIVERSITY_NAME: "[University Name]",
-  GUIDE_NAME: "[Guide / Supervisor Name]",
-  HOD_NAME: "[HOD Name]",
-  ACADEMIC_YEAR: "[2025-2026]",
-  SUBMISSION_MONTH_YEAR: "[Month Year]",
-};
+const CONFIG = require("../student_config.json");
 
 // ============================================================
 // Helpers
