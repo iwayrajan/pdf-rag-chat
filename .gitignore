@@ -5,3 +5,5 @@ __pycache__/
 *.pdf
 report_template/*.pdf
 report_template/page-*.jpg
+presentation/*.pdf
+presentation/slide-*.jpg
