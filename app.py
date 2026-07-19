@@ -1,6 +1,7 @@
 """
-Simple PDF RAG chat app.
-Upload a PDF -> ask questions -> answers grounded in retrieved chunks via Groq's free API.
+Multi-PDF RAG chat app.
+Upload one or more PDFs -> ask questions -> answers grounded in retrieved chunks,
+cited with source filename + page number, via Groq's free API.
 
 Run with: streamlit run app.py
 """
@@ -13,7 +14,7 @@ from groq import Groq
 
 from rag import PDFRag
 
-st.set_page_config(page_title="Chat with your PDF", page_icon="📄", layout="wide")
+st.set_page_config(page_title="Chat with your PDFs", page_icon="📄", layout="wide")
 
 # ---------------- Sidebar: API key + settings ----------------
 with st.sidebar:
@@ -37,17 +38,16 @@ with st.sidebar:
 
     st.markdown("---")
     st.caption(
-        "Pipeline: PDF → Markdown (pymupdf4llm) → chunks → embeddings "
-        "(sentence-transformers, CPU) → FAISS index → Groq LLM for the answer."
+        "Pipeline: PDF → per-page Markdown (pymupdf4llm) → chunks tagged with "
+        "source + page → embeddings (sentence-transformers, CPU) → FAISS index → "
+        "Groq LLM for the answer."
     )
 
 # ---------------- Session state ----------------
-if "rag" not in st.session_state:
-    st.session_state.rag = None
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
-if "processed_filename" not in st.session_state:
-    st.session_state.processed_filename = None
+if "loaded_files" not in st.session_state:
+    st.session_state.loaded_files = set()
 
 
 @st.cache_resource(show_spinner=False)
@@ -55,41 +55,47 @@ def get_rag_engine():
     return PDFRag()
 
 
-# ---------------- Main: upload ----------------
-st.title("📄 Chat with your PDF")
-st.caption("A small local RAG pipeline — upload a PDF, then ask it questions.")
+rag = get_rag_engine()
 
-uploaded_file = st.file_uploader("Upload a PDF", type=["pdf"])
+# ---------------- Main: multi-file upload ----------------
+st.title("📄 Chat with your PDFs")
+st.caption("A small local RAG pipeline — upload one or more PDFs, then ask questions across all of them.")
 
-if uploaded_file is not None and uploaded_file.name != st.session_state.processed_filename:
-    with st.spinner("Reading and indexing the PDF... (extracting text, chunking, embedding)"):
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            tmp.write(uploaded_file.read())
-            tmp_path = tmp.name
+uploaded_files = st.file_uploader("Upload PDFs", type=["pdf"], accept_multiple_files=True)
 
-        rag = get_rag_engine()
-        rag.chunks = []
-        rag.index = None
-        num_chunks = rag.process_pdf(tmp_path)
+if uploaded_files:
+    new_files = [f for f in uploaded_files if f.name not in st.session_state.loaded_files]
+    if new_files:
+        for f in new_files:
+            with st.spinner(f"Indexing '{f.name}'... (extracting text, chunking, embedding)"):
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                    tmp.write(f.read())
+                    tmp_path = tmp.name
 
-        st.session_state.rag = rag
-        st.session_state.processed_filename = uploaded_file.name
-        st.session_state.chat_history = []
+                num_chunks = rag.add_pdf(tmp_path, source_name=f.name)
+                st.session_state.loaded_files.add(f.name)
+                os.unlink(tmp_path)
 
-        os.unlink(tmp_path)
+            st.success(f"Indexed '{f.name}' into {num_chunks} chunks.")
 
-    st.success(f"Indexed '{uploaded_file.name}' into {num_chunks} chunks. Ask away below.")
-
-elif st.session_state.processed_filename:
-    st.info(f"Currently loaded: **{st.session_state.processed_filename}**")
+# ---------------- Loaded documents panel ----------------
+if st.session_state.loaded_files:
+    with st.expander(f"📚 Loaded documents ({len(st.session_state.loaded_files)})", expanded=False):
+        for fname in sorted(st.session_state.loaded_files):
+            col1, col2 = st.columns([5, 1])
+            col1.write(fname)
+            if col2.button("Remove", key=f"remove_{fname}"):
+                rag.remove_pdf(fname)
+                st.session_state.loaded_files.discard(fname)
+                st.rerun()
 
 # ---------------- Chat ----------------
-if st.session_state.rag is not None:
+if st.session_state.loaded_files:
     for msg in st.session_state.chat_history:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    question = st.chat_input("Ask a question about the PDF...")
+    question = st.chat_input("Ask a question across all loaded PDFs...")
 
     if question:
         if not groq_key:
@@ -100,10 +106,10 @@ if st.session_state.rag is not None:
                 st.markdown(question)
 
             with st.chat_message("assistant"):
-                is_broad = st.session_state.rag.is_broad_question(question)
+                is_broad = PDFRag.is_broad_question(question)
 
                 spinner_msg = (
-                    "This looks like a whole-document question, using the full text instead of search..."
+                    "This looks like a whole-document question, using full document text instead of search..."
                     if is_broad
                     else "Retrieving relevant chunks and generating an answer..."
                 )
@@ -113,16 +119,20 @@ if st.session_state.rag is not None:
                         # Summaries/overviews need the whole document, not similarity-matched
                         # fragments — vector search has nothing relevant to match a broad
                         # question against, so it returns near-random chunks.
-                        retrieved_chunks = []
-                        context = st.session_state.rag.full_text
+                        retrieved = []
+                        context = rag.get_full_text()
                         # Groq free models have limited context; trim defensively.
                         context = context[:24000]
                     else:
-                        retrieved_chunks = st.session_state.rag.retrieve_hybrid(question, k=top_k)
-                        context = "\n\n---\n\n".join(retrieved_chunks)
+                        retrieved = rag.retrieve_hybrid(question, k=top_k)
+                        context = "\n\n---\n\n".join(
+                            f"[Source: {item['source']}, page {item['page']}]\n{item['text']}"
+                            for item in retrieved
+                        )
 
                     prompt = f"""Answer the question using ONLY the context below. \
-If the answer isn't in the context, say you don't have enough information from the document.
+If the answer isn't in the context, say you don't have enough information from the documents. \
+When you use information from the context, mention which source file and page it came from.
 
 Context:
 {context}
@@ -150,9 +160,9 @@ Answer:"""
                             st.markdown(context)
                     else:
                         with st.expander("Show retrieved chunks (what the model actually saw)"):
-                            for i, chunk in enumerate(retrieved_chunks, 1):
-                                st.markdown(f"**Chunk {i}:**\n\n{chunk}")
+                            for i, item in enumerate(retrieved, 1):
+                                st.markdown(f"**Chunk {i}** — *{item['source']}, page {item['page']}*\n\n{item['text']}")
 
             st.session_state.chat_history.append({"role": "assistant", "content": answer})
 else:
-    st.info("Upload a PDF above to get started.")
+    st.info("Upload one or more PDFs above to get started.")
