@@ -11,3 +11,4 @@ deliverables/
 tracker/*.pdf
 tracker/sheet-*.jpg
 __pycache__/
+!test_pdfs/*.pdf
