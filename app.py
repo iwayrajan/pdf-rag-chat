@@ -30,8 +30,9 @@ with st.sidebar:
 
     model_name = st.selectbox(
         "Groq model",
-        ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
-        help="70B is smarter but slower; 8B is near-instant.",
+        ["openai/gpt-oss-120b", "openai/gpt-oss-20b"],
+        help="120b is smarter but slower; 20b is near-instant. (Updated Aug 2026 — "
+             "Groq retired llama-3.3-70b-versatile and llama-3.1-8b-instant on Aug 16, 2026.)",
     )
 
     top_k = st.slider("Chunks to retrieve per question", 2, 8, 4)
